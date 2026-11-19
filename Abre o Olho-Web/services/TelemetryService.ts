@@ -33,3 +33,4 @@ export async function checkApiConnection(): Promise<boolean> {
     return false;
   }
 }
+
