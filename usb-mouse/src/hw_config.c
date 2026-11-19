@@ -1,308 +1,226 @@
 /**
  ******************************************************************************
- * @file    USB_Example/hw_config.c
- * @author  MCD Application Team
- * @version V1.1.0
- * @date    20-September-2012
- * @brief   Hardware Configuration & Setup.
- ******************************************************************************
- * @attention
- *
- * <h2><center>&copy; COPYRIGHT 2012 STMicroelectronics</center></h2>
- *
- * Licensed under MCD-ST Liberty SW License Agreement V2, (the "License");
- * You may not use this file except in compliance with the License.
- * You may obtain a copy of the License at:
- *
- *        http://www.st.com/software_license_agreement_liberty_v2
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
+ * @file    hw_config.c
+ * @author  MCD Application Team (Atualizado)
+ * @version V1.2.0
+ * @date    2026
+ * @brief   Hardware Configuration & Setup for STM32F3 USB HID.
  ******************************************************************************
  */
 
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include <stdint.h>
 
-/** @addtogroup STM32F3_Discovery_Peripheral_Examples
- * @{
- */
-
-/** @addtogroup USB_Example
- * @{
- */
-
-/* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
-/* Private macro -------------------------------------------------------------*/
+#define CLOCK_STARTUP_TIMEOUT   ((uint32_t)0x00005000)
+#define UID_BASE_ADDRESS        ((uint32_t)0x1FFFF7E8)
+
 /* Private variables ---------------------------------------------------------*/
 ErrorStatus HSEStartUpStatus;
 EXTI_InitTypeDef EXTI_InitStructure;
 
-/* Extern variables ----------------------------------------------------------*/
-
 /* Private function prototypes -----------------------------------------------*/
 static void IntToUnicode(uint32_t value, uint8_t *pbuf, uint8_t len);
+
 /* Private functions ---------------------------------------------------------*/
 
 /**
  * @brief  Configures Main system clocks & power.
- * @param  None
- * @retval None
  */
 void Set_System(void) {
-	GPIO_InitTypeDef GPIO_InitStructure;
+    GPIO_InitTypeDef GPIO_InitStructure;
 
-	/*!< At this stage the microcontroller clock setting is already configured,
-	 this is done through SystemInit() function which is called from startup
-	 file (startup_stm32f30x.s) before to branch to application main.
-	 To reconfigure the default setting of SystemInit() function, refer to
-	 system_stm32f30x.c file
-	 */
+    /* Enable PWR and SYSCFG clocks */
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR, ENABLE);
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_SYSCFG, ENABLE);
 
-	/* Enable the PWR clock */
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR, ENABLE);
+    /* Configure PA11 (USB_DM) and PA12 (USB_DP) */
+    RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOA, ENABLE);
+    GPIO_StructInit(&GPIO_InitStructure);
+    GPIO_InitStructure.GPIO_Pin   = GPIO_Pin_11 | GPIO_Pin_12;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_AF;
+    GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+    GPIO_InitStructure.GPIO_PuPd  = GPIO_PuPd_NOPULL;
+    GPIO_Init(GPIOA, &GPIO_InitStructure);
 
-	/* Enable the SYSCFG module clock (used for the USB disconnect feature) */
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_SYSCFG, ENABLE);
-
-	/* Enable the USB disconnect GPIO clock */
-	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIO_DISCONNECT, ENABLE);
-
-	/*Set PA11,12 as IN - USB_DM,DP*/
-	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOA, ENABLE);
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_11 | GPIO_Pin_12;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
-	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
-	GPIO_Init(GPIOA, &GPIO_InitStructure);
-
-	/*SET PA11,12 for USB: USB_DM,DP*/
-	GPIO_PinAFConfig(GPIOA, GPIO_PinSource11, GPIO_AF_14);
-	GPIO_PinAFConfig(GPIOA, GPIO_PinSource12, GPIO_AF_14);
+    GPIO_PinAFConfig(GPIOA, GPIO_PinSource11, GPIO_AF_14);
+    GPIO_PinAFConfig(GPIOA, GPIO_PinSource12, GPIO_AF_14);
 
 #if defined(USB_USE_EXTERNAL_PULLUP)
-	/* Enable the USB disconnect GPIO clock */
-	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIO_DISCONNECT, ENABLE);
+    /* Enable the USB disconnect GPIO clock */
+    RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIO_DISCONNECT, ENABLE);
 
-	/* USB_DISCONNECT used as USB pull-up */
-	GPIO_InitStructure.GPIO_Pin = USB_DISCONNECT_PIN;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
-	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
-	GPIO_Init(USB_DISCONNECT, &GPIO_InitStructure);
+    GPIO_StructInit(&GPIO_InitStructure);
+    GPIO_InitStructure.GPIO_Pin   = USB_DISCONNECT_PIN;
+    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_OUT;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
+    GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+    GPIO_InitStructure.GPIO_PuPd  = GPIO_PuPd_NOPULL;
+    GPIO_Init(USB_DISCONNECT, &GPIO_InitStructure);
 #endif /* USB_USE_EXTERNAL_PULLUP */
 
-	/* Configure the EXTI line 18 connected internally to the USB IP */
-	EXTI_ClearITPendingBit(EXTI_Line18);
-	EXTI_InitStructure.EXTI_Line = EXTI_Line18; /*USB resume from suspend mode*/
-	EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
-	EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising;
-	EXTI_InitStructure.EXTI_LineCmd = ENABLE;
-	EXTI_Init(&EXTI_InitStructure);
+    /* Configure EXTI line 18 connected internally to USB Wakeup */
+    EXTI_ClearITPendingBit(EXTI_Line18);
+    EXTI_StructInit(&EXTI_InitStructure);
+    EXTI_InitStructure.EXTI_Line    = EXTI_Line18;
+    EXTI_InitStructure.EXTI_Mode    = EXTI_Mode_Interrupt;
+    EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising;
+    EXTI_InitStructure.EXTI_LineCmd = ENABLE;
+    EXTI_Init(&EXTI_InitStructure);
 
-	EXTI_ClearITPendingBit(USER_BUTTON_EXTI_LINE);
+    EXTI_ClearITPendingBit(USER_BUTTON_EXTI_LINE);
 }
 
 /**
  * @brief  Configures USB Clock input (48MHz).
- * @param  None
- * @retval None
  */
 void Set_USBClock(void) {
-	/* USBCLK = PLLCLK = 48 MHz */
-	RCC_USBCLKConfig(RCC_USBCLKSource_PLLCLK_1Div5);
-
-	/* Enable USB clock */
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_USB, ENABLE);
+    /* USBCLK = PLLCLK / 1.5 = 48 MHz (assuming 72 MHz PLL) */
+    RCC_USBCLKConfig(RCC_USBCLKSource_PLLCLK_1Div5);
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_USB, ENABLE);
 }
 
 /**
- * @brief  Configures all IOs as AIN to reduce the power consumption.
- * @param  None
- * @retval None
+ * @brief  Configures unused IOs as Analog Input to reduce power consumption.
  */
 void GPIO_AINConfig(void) {
-	GPIO_InitTypeDef GPIO_InitStructure;
+    GPIO_InitTypeDef GPIO_InitStructure;
 
-	/* Configure all GPIO port pins in Analog Input mode (floating input trigger OFF) */
+    RCC_AHBPeriphClockCmd(RCC_AHBPeriph_ALLGPIO, ENABLE);
 
-	/* Enable all GPIOs Clock*/
-	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_ALLGPIO, ENABLE);
+    GPIO_StructInit(&GPIO_InitStructure);
+    GPIO_InitStructure.GPIO_Pin  = GPIO_Pin_All;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AN;
+    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
 
-	/* Configure all GPIO port pins in Analog Input mode (floating input trigger OFF) */
+    GPIO_Init(GPIOC, &GPIO_InitStructure);
+    GPIO_Init(GPIOD, &GPIO_InitStructure);
+    GPIO_Init(GPIOE, &GPIO_InitStructure);
 
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_All;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AN;
-	GPIO_Init(GPIOC, &GPIO_InitStructure);
-	GPIO_Init(GPIOD, &GPIO_InitStructure);
-	GPIO_Init(GPIOE, &GPIO_InitStructure);
-
-	/* Disable all GPIOs Clock*/
-	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_ALLGPIO, DISABLE);
+    RCC_AHBPeriphClockCmd(RCC_AHBPeriph_ALLGPIO, DISABLE);
 }
 
 /**
- * @brief  Power-off system clocks and power while entering suspend mode.
- * @param  None
- * @retval None
+ * @brief  Prepares device state when entering USB suspend mode.
  */
 void Enter_LowPowerMode(void) {
-	/* Set the device state to suspend */
-	bDeviceState = SUSPENDED;
+    bDeviceState = SUSPENDED;
 
-	/* Clear EXTI Line18 pending bit */
-	EXTI_ClearITPendingBit(USER_BUTTON_EXTI_LINE);
+    /* Clear both USB Wakeup (Line 18) and User Button pending bits */
+    EXTI_ClearITPendingBit(EXTI_Line18);
+    EXTI_ClearITPendingBit(USER_BUTTON_EXTI_LINE);
 }
 
 /**
- * @brief  Restores system clocks and power while exiting suspend mode.
- * @param  None
- * @retval None
+ * @brief  Restores system clocks and power when exiting suspend mode.
  */
 void Leave_LowPowerMode(void) {
-	DEVICE_INFO *pInfo = &Device_Info;
+    DEVICE_INFO *pInfo = &Device_Info;
+    volatile uint32_t timeout = 0;
 
-	/* Enable HSE */
-	RCC_HSEConfig(RCC_HSE_ON);
+    /* Enable HSE and wait with timeout */
+    RCC_HSEConfig(RCC_HSE_ON);
+    HSEStartUpStatus = RCC_WaitForHSEStartUp();
 
-	/* Wait till HSE is ready */
-	HSEStartUpStatus = RCC_WaitForHSEStartUp();
+    if (HSEStartUpStatus == SUCCESS) {
+        /* Enable PLL1 */
+        RCC_PLLCmd(ENABLE);
+        timeout = 0;
+        while ((RCC_GetFlagStatus(RCC_FLAG_PLLRDY) == RESET) && (timeout < CLOCK_STARTUP_TIMEOUT)) {
+            timeout++;
+        }
 
-	/* Wait till HSE is ready */
-	while (RCC_GetFlagStatus(RCC_FLAG_HSERDY) == RESET) {
-	}
+        /* Select PLL as system clock source */
+        RCC_SYSCLKConfig(RCC_SYSCLKSource_PLLCLK);
+        timeout = 0;
+        while ((RCC_GetSYSCLKSource() != 0x08) && (timeout < CLOCK_STARTUP_TIMEOUT)) {
+            timeout++;
+        }
+    }
 
-	/* Enable PLL1 */
-	RCC_PLLCmd(ENABLE);
-
-	/* Wait till PLL1 is ready */
-	while (RCC_GetFlagStatus(RCC_FLAG_PLLRDY) == RESET) {
-	}
-
-	/* Select PLL as system clock source */
-	RCC_SYSCLKConfig(RCC_SYSCLKSource_PLLCLK);
-
-	/* Wait till PLL is used as system clock source */
-	while (RCC_GetSYSCLKSource() != 0x08) {
-	}
-
-	/* Set the device state to the correct state */
-	if (pInfo->Current_Configuration != 0) {
-		/* Device configured */
-		bDeviceState = CONFIGURED;
-	} else {
-		bDeviceState = ATTACHED;
-	}
+    /* Restore USB device state */
+    bDeviceState = (pInfo->Current_Configuration != 0) ? CONFIGURED : ATTACHED;
 }
 
 /**
  * @brief  Configures the USB interrupts.
- * @param  None
- * @retval None
  */
 void USB_Interrupts_Config(void) {
-	NVIC_InitTypeDef NVIC_InitStructure;
+    NVIC_InitTypeDef NVIC_InitStructure;
 
-	/* 2 bit for pre-emption priority, 2 bits for subpriority */
-	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
+    NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
 
-	/* Enable the USB interrupt */
-#if defined (USB_INT_DEFAULT)
-	NVIC_InitStructure.NVIC_IRQChannel = USB_LP_CAN1_RX0_IRQn;
+    /* USB Low Priority Interrupt */
+#if defined(USB_INT_DEFAULT)
+    NVIC_InitStructure.NVIC_IRQChannel = USB_LP_CAN1_RX0_IRQn;
+#elif defined(USB_INT_REMAP)
+    NVIC_InitStructure.NVIC_IRQChannel = USB_LP_IRQn;
 #endif
-#if defined (USB_INT_REMAP)
-	NVIC_InitStructure.NVIC_IRQChannel = USB_LP_IRQn;
-#endif 
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 2;
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
-	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-	NVIC_Init(&NVIC_InitStructure);
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 2;
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority        = 0;
+    NVIC_InitStructure.NVIC_IRQChannelCmd                = ENABLE;
+    NVIC_Init(&NVIC_InitStructure);
 
-	/* Enable the USB Wake-up interrupt */
-#if defined (USB_INT_DEFAULT)
-	NVIC_InitStructure.NVIC_IRQChannel = USBWakeUp_IRQn;
+    /* USB Wake-up Interrupt */
+#if defined(USB_INT_DEFAULT)
+    NVIC_InitStructure.NVIC_IRQChannel = USBWakeUp_IRQn;
+#elif defined(USB_INT_REMAP)
+    NVIC_InitStructure.NVIC_IRQChannel = USBWakeUp_RMP_IRQn;
 #endif
-#if defined (USB_INT_REMAP)  
-	NVIC_InitStructure.NVIC_IRQChannel = USBWakeUp_RMP_IRQn;
-#endif  
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
-	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-	NVIC_Init(&NVIC_InitStructure);
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority        = 0;
+    NVIC_InitStructure.NVIC_IRQChannelCmd                = ENABLE;
+    NVIC_Init(&NVIC_InitStructure);
 
-	/* Enable the Key EXTI line Interrupt */
-	NVIC_InitStructure.NVIC_IRQChannel = USER_BUTTON_EXTI_IRQn;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
-	NVIC_Init(&NVIC_InitStructure);
+    /* User Button EXTI Interrupt */
+    NVIC_InitStructure.NVIC_IRQChannel                   = USER_BUTTON_EXTI_IRQn;
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority        = 0;
+    NVIC_InitStructure.NVIC_IRQChannelCmd                = ENABLE;
+    NVIC_Init(&NVIC_InitStructure);
 }
 
 /**
  * @brief  Software Connection/Disconnection of USB Cable.
- * @param  None
- * @retval None
  */
 void USB_Cable_Config(FunctionalState NewState) {
-	if (NewState != DISABLE) {
-		GPIO_ResetBits(USB_DISCONNECT, USB_DISCONNECT_PIN);
-	} else {
-		GPIO_SetBits(USB_DISCONNECT, USB_DISCONNECT_PIN);
-	}
+#if defined(USB_USE_EXTERNAL_PULLUP)
+    if (NewState != DISABLE) {
+        GPIO_ResetBits(USB_DISCONNECT, USB_DISCONNECT_PIN);
+    } else {
+        GPIO_SetBits(USB_DISCONNECT, USB_DISCONNECT_PIN);
+    }
+#else
+    (void)NewState; /* Avoid unused parameter warning if internal pull-up is used */
+#endif
 }
 
 /**
- * @brief  Create the serial number string descriptor.
- * @param  None.
- * @retval None
+ * @brief  Creates the serial number string descriptor from STM32 Unique ID.
  */
 void Get_SerialNum(void) {
-	uint32_t Device_Serial0, Device_Serial1, Device_Serial2;
+    uint32_t Device_Serial0 = *(__IO uint32_t *)(UID_BASE_ADDRESS);
+    uint32_t Device_Serial1 = *(__IO uint32_t *)(UID_BASE_ADDRESS + 0x04);
+    uint32_t Device_Serial2 = *(__IO uint32_t *)(UID_BASE_ADDRESS + 0x08);
 
-	Device_Serial0 = *(__IO uint32_t*) (0x1FFFF7E8);
-	Device_Serial1 = *(__IO uint32_t*) (0x1FFFF7EC);
-	Device_Serial2 = *(__IO uint32_t*) (0x1FFFF7F0);
+    Device_Serial0 += Device_Serial2;
 
-	Device_Serial0 += Device_Serial2;
-
-	if (Device_Serial0 != 0) {
-		IntToUnicode(Device_Serial0, &Hid_StringSerial[2], 8);
-		IntToUnicode(Device_Serial1, &Hid_StringSerial[18], 4);
-	}
+    if (Device_Serial0 != 0) {
+        IntToUnicode(Device_Serial0, &Hid_StringSerial[2], 8);
+        IntToUnicode(Device_Serial1, &Hid_StringSerial[18], 4);
+    }
 }
 
 /**
- * @brief  Convert Hex 32Bits value into char.
- * @param  value: Data to be converted.
- * @param  pbuf: pointer to buffer.
- * @param  len: Data length.
- * @retval None
+ * @brief  Converts a 32-bit hex value into UTF-16LE Unicode string descriptor.
  */
 static void IntToUnicode(uint32_t value, uint8_t *pbuf, uint8_t len) {
-	uint8_t idx = 0;
-
-	for (idx = 0; idx < len; idx++) {
-		if (((value >> 28)) < 0xA) {
-			pbuf[2 * idx] = (value >> 28) + '0';
-		} else {
-			pbuf[2 * idx] = (value >> 28) + 'A' - 10;
-		}
-
-		value = value << 4;
-
-		pbuf[2 * idx + 1] = 0;
-	}
+    for (uint8_t idx = 0; idx < len; idx++) {
+        uint8_t nibble = (uint8_t)(value >> 28);
+        pbuf[2 * idx]     = (nibble < 0xA) ? (nibble + '0') : (nibble + 'A' - 10);
+        pbuf[2 * idx + 1] = 0;
+        value <<= 4;
+    }
 }
-/**
- * @}
- */
-
-/**
- * @}
- */
-
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

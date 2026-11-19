@@ -1,4 +1,4 @@
-# Open-DoVision
+# Abre o Olho
 **Open-Source Virtual Reality and Digital Interaction**
 
 Open-DoVision was used as a technological reference and exploration platform in the development of the **Final Project for the Multimedia Production course**, with the aim of studying and exploring the possibilities of integrating virtual reality, human-computer interaction, and multimedia technologies.
