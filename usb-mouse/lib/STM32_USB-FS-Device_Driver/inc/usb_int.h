@@ -1,45 +1,107 @@
 /**
-  ******************************************************************************
-  * @file    usb_int.h
-  * @author  MCD Application Team
-  * @version V4.0.0
-  * @date    28-August-2012
-  * @brief   Endpoint CTR (Low and High) interrupt's service routines prototypes
-  ******************************************************************************
-  * @attention
-  *
-  * <h2><center>&copy; COPYRIGHT 2012 STMicroelectronics</center></h2>
-  *
-  * Licensed under MCD-ST Liberty SW License Agreement V2, (the "License");
-  * You may not use this file except in compliance with the License.
-  * You may obtain a copy of the License at:
-  *
-  *        http://www.st.com/software_license_agreement_liberty_v2
-  *
-  * Unless required by applicable law or agreed to in writing, software 
-  * distributed under the License is distributed on an "AS IS" BASIS, 
-  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  * See the License for the specific language governing permissions and
-  * limitations under the License.
-  *
-  ******************************************************************************
-  */
+ ******************************************************************************
+ * @file    usb_init.h
+ * @author  MCD Application Team (Comentado e Atualizado)
+ * @version V4.1.0
+ * @date    2026
+ * @brief   Rotinas de inicialização e ponteiros globais do núcleo USB-FS.
+ ******************************************************************************
+ */
 
+#ifndef USB_INIT_H
+#define USB_INIT_H
 
-/* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __USB_INT_H
-#define __USB_INT_H
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* Includes ------------------------------------------------------------------*/
-/* Exported types ------------------------------------------------------------*/
-/* Exported constants --------------------------------------------------------*/
-/* Exported macro ------------------------------------------------------------*/
-/* Exported functions ------------------------------------------------------- */
-void CTR_LP(void);
-void CTR_HP(void);
+#include <stdint.h>
+#include "usb_core.h"
+
+/* Exported functions --------------------------------------------------------*/
+
+/**
+ * @brief  Inicializa as estruturas internas do stack USB, associa os ponteiros
+ *         globais (pInformation, pProperty) e chama a rotina Init() da classe.
+ */
+void USB_Init(void);
 
 /* External variables --------------------------------------------------------*/
 
-#endif /* __USB_INT_H */
+/** @brief Índice do endpoint ativo no atendimento da interrupção atual (0..7). */
+extern uint8_t EPindex;
 
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
+/** @brief Ponteiro para o contexto da transação atual (Setup Packet e estado). */
+extern DEVICE_INFO *pInformation;
+
+/** @brief Ponteiro para a tabela de callbacks da classe (HID Init, Reset, Setup). */
+extern DEVICE_PROP *pProperty;
+
+/** @brief Ponteiro para os hooks opcionais de pedidos padrão USB 2.0. */
+extern USER_STANDARD_REQUESTS *pUser_Standard_Requests;
+
+/** @brief Guarda temporariamente o estado dos registos Rx/Tx durante uma ISR. */
+extern uint16_t SaveState;
+
+/** @brief Máscara de interrupções ativas no registo CNTR do periférico USB. */
+extern uint16_t wInterrupt_Mask;
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* USB_INIT_H *//**
+ ******************************************************************************
+ * @file    usb_init.h
+ * @author  MCD Application Team (Comentado e Atualizado)
+ * @version V4.1.0
+ * @date    2026
+ * @brief   Rotinas de inicialização e ponteiros globais do núcleo USB-FS.
+ ******************************************************************************
+ */
+
+#ifndef USB_INIT_H
+#define USB_INIT_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* Includes ------------------------------------------------------------------*/
+#include <stdint.h>
+#include "usb_core.h"
+
+/* Exported functions --------------------------------------------------------*/
+
+/**
+ * @brief  Inicializa as estruturas internas do stack USB, associa os ponteiros
+ *         globais (pInformation, pProperty) e chama a rotina Init() da classe.
+ */
+void USB_Init(void);
+
+/* External variables --------------------------------------------------------*/
+
+/** @brief Índice do endpoint ativo no atendimento da interrupção atual (0..7). */
+extern uint8_t EPindex;
+
+/** @brief Ponteiro para o contexto da transação atual (Setup Packet e estado). */
+extern DEVICE_INFO *pInformation;
+
+/** @brief Ponteiro para a tabela de callbacks da classe (HID Init, Reset, Setup). */
+extern DEVICE_PROP *pProperty;
+
+/** @brief Ponteiro para os hooks opcionais de pedidos padrão USB 2.0. */
+extern USER_STANDARD_REQUESTS *pUser_Standard_Requests;
+
+/** @brief Guarda temporariamente o estado dos registos Rx/Tx durante uma ISR. */
+extern uint16_t SaveState;
+
+/** @brief Máscara de interrupções ativas no registo CNTR do periférico USB. */
+extern uint16_t wInterrupt_Mask;
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* USB_INIT_H */

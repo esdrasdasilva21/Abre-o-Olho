@@ -1,259 +1,103 @@
 /**
-  ******************************************************************************
-  * @file    usb_core.h
-  * @author  MCD Application Team
-  * @version V4.0.0
-  * @date    28-August-2012
-  * @brief   Standard protocol processing functions prototypes
-  ******************************************************************************
-  * @attention
-  *
-  * <h2><center>&copy; COPYRIGHT 2012 STMicroelectronics</center></h2>
-  *
-  * Licensed under MCD-ST Liberty SW License Agreement V2, (the "License");
-  * You may not use this file except in compliance with the License.
-  * You may obtain a copy of the License at:
-  *
-  *        http://www.st.com/software_license_agreement_liberty_v2
-  *
-  * Unless required by applicable law or agreed to in writing, software 
-  * distributed under the License is distributed on an "AS IS" BASIS, 
-  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  * See the License for the specific language governing permissions and
-  * limitations under the License.
-  *
-  ******************************************************************************
-  */
+ ******************************************************************************
+ * @file    usb_def.h
+ * @author  MCD Application Team (Comentado e Atualizado)
+ * @version V4.1.0
+ * @date    2026
+ * @brief   Definições fundamentais do protocolo USB 2.0 (Capítulo 9).
+ *          Contém enumerações e máscaras para decodificar Setup Packets.
+ ******************************************************************************
+ */
 
+#ifndef USB_DEF_H
+#define USB_DEF_H
 
-/* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __USB_CORE_H
-#define __USB_CORE_H
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-/* Includes ------------------------------------------------------------------*/
 /* Exported types ------------------------------------------------------------*/
-typedef enum _CONTROL_STATE
+
+/**
+ * @brief Destinatário do pedido USB (Bits 0..4 do campo bmRequestType).
+ *        Indica a que componente do dispositivo o comando se destina.
+ */
+typedef enum _RECIPIENT_TYPE
 {
-  WAIT_SETUP,       /* 0 */
-  SETTING_UP,       /* 1 */
-  IN_DATA,          /* 2 */
-  OUT_DATA,         /* 3 */
-  LAST_IN_DATA,     /* 4 */
-  LAST_OUT_DATA,    /* 5 */
-  WAIT_STATUS_IN,   /* 7 */
-  WAIT_STATUS_OUT,  /* 8 */
-  STALLED,          /* 9 */
-  PAUSE             /* 10 */
-} CONTROL_STATE;    /* The state machine states of a control pipe */
+  DEVICE_RECIPIENT = 0,     /* O pedido destina-se ao dispositivo USB como um todo */
+  INTERFACE_RECIPIENT,      /* O pedido destina-se a uma interface específica (ex: Interface HID) */
+  ENDPOINT_RECIPIENT,       /* O pedido destina-se a um endpoint específico (ex: EP1 IN/OUT) */
+  OTHER_RECIPIENT           /* Outro destinatário definido pelo protocolo */
+} RECIPIENT_TYPE;
 
-typedef struct OneDescriptor
+/**
+ * @brief Códigos dos Pedidos Padrão USB (campo bRequest).
+ *        Usados principalmente pelo sistema operativo durante a enumeração do dispositivo.
+ */
+typedef enum _STANDARD_REQUESTS
 {
-  uint8_t *Descriptor;
-  uint16_t Descriptor_Size;
-}
-ONE_DESCRIPTOR, *PONE_DESCRIPTOR;
-/* All the request process routines return a value of this type
-   If the return value is not SUCCESS or NOT_READY,
-   the software will STALL the correspond endpoint */
-typedef enum _RESULT
+  GET_STATUS = 0,           /* Lê o estado atual do dispositivo, interface ou endpoint */
+  CLEAR_FEATURE,            /* Desativa uma funcionalidade (ex: limpa condição de STALL) */
+  RESERVED1,                /* Reservado pela norma USB */
+  SET_FEATURE,              /* Ativa uma funcionalidade (ex: Remote Wakeup ou Halt) */
+  RESERVED2,                /* Reservado pela norma USB */
+  SET_ADDRESS,              /* Atribui um endereço único (1..127) ao dispositivo no barramento */
+  GET_DESCRIPTOR,           /* Solicita um descritor (Device, Config, String, HID Report, etc.) */
+  SET_DESCRIPTOR,           /* Atualiza ou adiciona um descritor (raramente usado) */
+  GET_CONFIGURATION,        /* Verifica qual a configuração ativa no momento */
+  SET_CONFIGURATION,        /* Ativa a configuração do dispositivo (coloca-o no estado CONFIGURED) */
+  GET_INTERFACE,            /* Lê a configuração alternativa ativa de uma interface */
+  SET_INTERFACE,            /* Seleciona uma configuração alternativa para uma interface */
+  TOTAL_sREQUEST,           /* Sentinel: número total de pedidos padrão suportados na tabela (12) */
+  SYNCH_FRAME = 12          /* Usado apenas em endpoints isócronos para sincronização */
+} STANDARD_REQUESTS;
+
+/**
+ * @brief Tipos de Descritores USB padrão (byte alto do campo wValue em GET_DESCRIPTOR).
+ */
+typedef enum _DESCRIPTOR_TYPE
 {
-  USB_SUCCESS = 0,    /* Process successfully */
-  USB_ERROR,
-  USB_UNSUPPORT,
-  USB_NOT_READY       /* The process has not been finished, endpoint will be
-                         NAK to further request */
-} RESULT;
+  DEVICE_DESCRIPTOR = 1,    /* Descritor principal (VID, PID, versão USB, classe) */
+  CONFIG_DESCRIPTOR,        /* Descritor de configuração (consumo de energia, nº de interfaces) */
+  STRING_DESCRIPTOR,        /* Textos legíveis (Fabricante, Produto, Número de Série) */
+  INTERFACE_DESCRIPTOR,     /* Define a classe da interface (ex: 0x03 para HID) */
+  ENDPOINT_DESCRIPTOR       /* Define direção, tipo (Interrupt/Bulk) e tamanho máximo de pacote */
+} DESCRIPTOR_TYPE;
 
-
-/*-*-*-*-*-*-*-*-*-*-* Definitions for endpoint level -*-*-*-*-*-*-*-*-*-*-*-*/
-typedef struct _ENDPOINT_INFO
+/**
+ * @brief Seletores de funcionalidade para os pedidos SET_FEATURE e CLEAR_FEATURE.
+ */
+typedef enum _FEATURE_SELECTOR
 {
-  /* When send data out of the device,
-   CopyData() is used to get data buffer 'Length' bytes data
-   if Length is 0,
-    CopyData() returns the total length of the data
-    if the request is not supported, returns 0
-    (NEW Feature )
-     if CopyData() returns -1, the calling routine should not proceed
-     further and will resume the SETUP process by the class device
-   if Length is not 0,
-    CopyData() returns a pointer to indicate the data location
-   Usb_wLength is the data remain to be sent,
-   Usb_wOffset is the Offset of original data
-  When receive data from the host,
-   CopyData() is used to get user data buffer which is capable
-   of Length bytes data to copy data from the endpoint buffer.
-   if Length is 0,
-    CopyData() returns the available data length,
-   if Length is not 0,
-    CopyData() returns user buffer address
-   Usb_rLength is the data remain to be received,
-   Usb_rPointer is the Offset of data buffer
-  */
-  uint16_t  Usb_wLength;
-  uint16_t  Usb_wOffset;
-  uint16_t  PacketSize;
-  uint8_t   *(*CopyData)(uint16_t Length);
-}ENDPOINT_INFO;
-
-/*-*-*-*-*-*-*-*-*-*-*-* Definitions for device level -*-*-*-*-*-*-*-*-*-*-*-*/
-
-typedef struct _DEVICE
-{
-  uint8_t Total_Endpoint;     /* Number of endpoints that are used */
-  uint8_t Total_Configuration;/* Number of configuration available */
-}
-DEVICE;
-
-typedef union
-{
-  uint16_t w;
-  struct BW
-  {
-    uint8_t bb1;
-    uint8_t bb0;
-  }
-  bw;
-} uint16_t_uint8_t;
-
-typedef struct _DEVICE_INFO
-{
-  uint8_t USBbmRequestType;       /* bmRequestType */
-  uint8_t USBbRequest;            /* bRequest */
-  uint16_t_uint8_t USBwValues;         /* wValue */
-  uint16_t_uint8_t USBwIndexs;         /* wIndex */
-  uint16_t_uint8_t USBwLengths;        /* wLength */
-
-  uint8_t ControlState;           /* of type CONTROL_STATE */
-  uint8_t Current_Feature;
-  uint8_t Current_Configuration;   /* Selected configuration */
-  uint8_t Current_Interface;       /* Selected interface of current configuration */
-  uint8_t Current_AlternateSetting;/* Selected Alternate Setting of current
-                                     interface*/
-
-  ENDPOINT_INFO Ctrl_Info;
-}DEVICE_INFO;
-
-typedef struct _DEVICE_PROP
-{
-  void (*Init)(void);        /* Initialize the device */
-  void (*Reset)(void);       /* Reset routine of this device */
-
-  /* Device dependent process after the status stage */
-  void (*Process_Status_IN)(void);
-  void (*Process_Status_OUT)(void);
-
-  /* Procedure of process on setup stage of a class specified request with data stage */
-  /* All class specified requests with data stage are processed in Class_Data_Setup
-   Class_Data_Setup()
-    responses to check all special requests and fills ENDPOINT_INFO
-    according to the request
-    If IN tokens are expected, then wLength & wOffset will be filled
-    with the total transferring bytes and the starting position
-    If OUT tokens are expected, then rLength & rOffset will be filled
-    with the total expected bytes and the starting position in the buffer
-
-    If the request is valid, Class_Data_Setup returns SUCCESS, else UNSUPPORT
-
-   CAUTION:
-    Since GET_CONFIGURATION & GET_INTERFACE are highly related to
-    the individual classes, they will be checked and processed here.
-  */
-  RESULT (*Class_Data_Setup)(uint8_t RequestNo);
-
-  /* Procedure of process on setup stage of a class specified request without data stage */
-  /* All class specified requests without data stage are processed in Class_NoData_Setup
-   Class_NoData_Setup
-    responses to check all special requests and perform the request
-
-   CAUTION:
-    Since SET_CONFIGURATION & SET_INTERFACE are highly related to
-    the individual classes, they will be checked and processed here.
-  */
-  RESULT (*Class_NoData_Setup)(uint8_t RequestNo);
-
-  /*Class_Get_Interface_Setting
-   This function is used by the file usb_core.c to test if the selected Interface
-   and Alternate Setting (uint8_t Interface, uint8_t AlternateSetting) are supported by
-   the application.
-   This function is writing by user. It should return "SUCCESS" if the Interface
-   and Alternate Setting are supported by the application or "UNSUPPORT" if they
-   are not supported. */
-
-  RESULT  (*Class_Get_Interface_Setting)(uint8_t Interface, uint8_t AlternateSetting);
-
-  uint8_t* (*GetDeviceDescriptor)(uint16_t Length);
-  uint8_t* (*GetConfigDescriptor)(uint16_t Length);
-  uint8_t* (*GetStringDescriptor)(uint16_t Length);
-
-  /* This field is not used in current library version. It is kept only for 
-   compatibility with previous versions */
-  void* RxEP_buffer;
-   
-  uint8_t MaxPacketSize;
-
-}DEVICE_PROP;
-
-typedef struct _USER_STANDARD_REQUESTS
-{
-  void (*User_GetConfiguration)(void);       /* Get Configuration */
-  void (*User_SetConfiguration)(void);       /* Set Configuration */
-  void (*User_GetInterface)(void);           /* Get Interface */
-  void (*User_SetInterface)(void);           /* Set Interface */
-  void (*User_GetStatus)(void);              /* Get Status */
-  void (*User_ClearFeature)(void);           /* Clear Feature */
-  void (*User_SetEndPointFeature)(void);     /* Set Endpoint Feature */
-  void (*User_SetDeviceFeature)(void);       /* Set Device Feature */
-  void (*User_SetDeviceAddress)(void);       /* Set Device Address */
-}
-USER_STANDARD_REQUESTS;
+  ENDPOINT_STALL = 0,       /* Bloqueia/desbloqueia um endpoint por erro ou controle de fluxo */
+  DEVICE_REMOTE_WAKEUP = 1  /* Permite que o dispositivo acorde o PC do modo de suspensão */
+} FEATURE_SELECTOR;
 
 /* Exported constants --------------------------------------------------------*/
-#define Type_Recipient (pInformation->USBbmRequestType & (REQUEST_TYPE | RECIPIENT))
 
-#define Usb_rLength Usb_wLength
-#define Usb_rOffset Usb_wOffset
+/**
+ * @brief Máscaras e valores para interpretar o byte bmRequestType de um Setup Packet:
+ *        - Bit 7:    Direção (0 = Host-to-Device, 1 = Device-to-Host)
+ *        - Bits 6..5: Tipo de Pedido (máscara REQUEST_TYPE = 0x60)
+ *        - Bits 4..0: Destinatário (máscara RECIPIENT = 0x1F)
+ */
+#define REQUEST_TYPE      0x60  /* Máscara binária (0110 0000) para extrair o tipo de pedido */
+#define STANDARD_REQUEST  0x00  /* Pedido padrão USB 2.0 (enumeração e controle básico) */
+#define CLASS_REQUEST     0x20  /* Pedido específico de classe (ex: HID Get_Report / Set_Report) */
+#define VENDOR_REQUEST    0x40  /* Pedido proprietário definido pelo fabricante */
 
-#define USBwValue USBwValues.w
-#define USBwValue0 USBwValues.bw.bb0
-#define USBwValue1 USBwValues.bw.bb1
-#define USBwIndex USBwIndexs.w
-#define USBwIndex0 USBwIndexs.bw.bb0
-#define USBwIndex1 USBwIndexs.bw.bb1
-#define USBwLength USBwLengths.w
-#define USBwLength0 USBwLengths.bw.bb0
-#define USBwLength1 USBwLengths.bw.bb1
+#define RECIPIENT         0x1F  /* Máscara binária (0001 1111) para extrair o destinatário */
 
 /* Exported macro ------------------------------------------------------------*/
-/* Exported functions ------------------------------------------------------- */
-uint8_t Setup0_Process(void);
-uint8_t Post0_Process(void);
-uint8_t Out0_Process(void);
-uint8_t In0_Process(void);
+/**
+ * @brief Macros auxiliares para facilitar a leitura do bmRequestType no código C.
+ */
+#define USB_GET_REQUEST_TYPE(bmReqType)  ((bmReqType) & REQUEST_TYPE)
+#define USB_GET_RECIPIENT(bmReqType)     ((bmReqType) & RECIPIENT)
+#define USB_IS_DEVICE_TO_HOST(bmReqType) (((bmReqType) & 0x80U) != 0U)
 
-RESULT Standard_SetEndPointFeature(void);
-RESULT Standard_SetDeviceFeature(void);
+#ifdef __cplusplus
+}
+#endif
 
-uint8_t *Standard_GetConfiguration(uint16_t Length);
-RESULT Standard_SetConfiguration(void);
-uint8_t *Standard_GetInterface(uint16_t Length);
-RESULT Standard_SetInterface(void);
-uint8_t *Standard_GetDescriptorData(uint16_t Length, PONE_DESCRIPTOR pDesc);
-
-uint8_t *Standard_GetStatus(uint16_t Length);
-RESULT Standard_ClearFeature(void);
-void SetDeviceAddress(uint8_t);
-void NOP_Process(void);
-
-extern DEVICE_PROP Device_Property;
-extern  USER_STANDARD_REQUESTS User_Standard_Requests;
-extern  DEVICE  Device_Table;
-extern DEVICE_INFO Device_Info;
-
-/* cells saving status during interrupt servicing */
-extern __IO uint16_t SaveRState;
-extern __IO uint16_t SaveTState;
-
-#endif /* __USB_CORE_H */
-
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
+#endif /* USB_DEF_H */
