@@ -47,12 +47,6 @@ async function updateSensorData(): Promise<void> {
       return;
     }
 
-    document.querySelector('#counter')!.textContent =
-      String(data.counter);
-
-    document.querySelector('#temperature')!.textContent =
-      `${data.temperature} °C`;
-
     document.querySelector('#gyro-x')!.textContent =
       String(data.gyroscope[0]);
 
