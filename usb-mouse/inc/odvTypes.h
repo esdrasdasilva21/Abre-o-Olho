@@ -1,32 +1,12 @@
-/*
+/**
  ******************************************************************************
  * @file    odvTypes.h
- * @author  Kailang@DotLab
- * @version V0.0.0
- * @date    04-09-2014
- * @brief   Open DoVision Types
- ******************************************************************************
- * @note
- *
- * Happy to see you here!
- *
- * This file defines all the useful type that may or may not be directly or
- * indirectly used by you and me.
- *
- * And there're only some keywords to remember:
- * In	- HID In Report
- * Out	- HID Out Report
- * Fea	- HID Feature Report
- * Rep	- All kinds of HID Reports
- * These report stuff are little tricky... You can google it to get started.
- * And we are working on some detailed descriptions.
- *
- * All the files written by DotLab is under GUN GPL V3.0 License, which give
- * you plenty of freedom to do the things you want to do as long as you keep
- * this note.
- *
- * Again, happy to see you here and enjoy!
- *
+ * @author  Kailang@DotLab (Melhorado e Comentado)
+ * @version V0.1.0
+ * @date    2026
+ * @brief   Definições de tipos, tamanhos de pacotes e estruturas dos relatórios HID
+ *          para o Open DoVision.
+ * @note    Licensed under GNU GPL V3.0 License.
  ******************************************************************************
  */
 
@@ -34,78 +14,99 @@
 #ifndef ODVTYPES_H_
 #define ODVTYPES_H_
 
-/* Includes ------------------------------------------------------------------*/
-/* Exported macro ------------------------------------------------------------*/
-#define OutData_Size			(uint8_t)			40
-#define FeaCheck_Size			(uint8_t)			5
-#define FeaRenew_Size			(uint8_t)			5
-#define FeaConfig_Size			(uint8_t)			16
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-/* Exported types ------------------------------------------------------------*/
-typedef struct OutDataFrame {	/* EP1 Out Report Types */
-	uint8_t		messageType;	/* 0x10 */
-	uint16_t	count;
-	int8_t		temp;
-	int32_t		gyrData[3];
-	int32_t		accData[3];
-	int32_t		magData[3];
+/* Includes ------------------------------------------------------------------*/
+#include <stdint.h>
+
+/* Exported constants (Tamanhos exatos dos buffers em bytes) -----------------*/
+#define OutData_Size            ((uint8_t)40)   /* 1 (type) + 2 (count) + 1 (temp) + 36 (3x3x4 bytes de dados IMU) */
+#define FeaCheck_Size           ((uint8_t)5)    /* 1 (type) + 4 (magicWord) */
+#define FeaRenew_Size           ((uint8_t)5)    /* 1 (type) + 4 (magicWord) */
+#define FeaConfig_Size          ((uint8_t)16)   /* 1 (type) + 4 (dueTime) + 2*4 (interval/scales) + 3 (units) */
+
+/* Exported types (Estruturas internas dos pacotes) ---------------------------*/
+
+/** @brief Estrutura dos dados de telemetria enviados no Endpoint 1 (OUT/INPUT para o PC). */
+typedef struct OutDataFrame {
+    uint8_t     messageType;    /* Tipo de mensagem (0x11 para Out_Data) */
+    uint16_t    count;          /* Contador incremental de pacotes */
+    int8_t      temp;           /* Temperatura interna do sensor */
+    int32_t     gyrData[3];     /* Dados XYZ do Giroscópio (convertidos com escala) */
+    int32_t     accData[3];     /* Dados XYZ do Acelerómetro */
+    int32_t     magData[3];     /* Dados XYZ do Magnetómetro */
 } OutDataFrame;
 
-typedef struct FeaCheckFrame {	/* EP0 Feature Report Types */
-	uint8_t		reportType;		/* 0x01 */
-	uint32_t	magicWord;
+/** @brief Estrutura do Feature Report de Verificação (Report ID 0x01). */
+typedef struct FeaCheckFrame {
+    uint8_t     reportType;     /* 0x01 */
+    uint32_t    magicWord;      /* Palavra mágica de validação (Magic_Word) */
 } FeaCheckFrame;
+
+/** @brief Estrutura do Feature Report de Renovação / Reset (Report ID 0x02). */
 typedef struct FeaRenewFrame {
-	uint8_t		reportType;		/* 0x02 */
-	uint32_t	magicWord;
+    uint8_t     reportType;     /* 0x02 */
+    uint32_t    magicWord;      /* Palavra mágica */
 } FeaRenewFrame;
+
+/** @brief Estrutura do Feature Report de Configuração (Report ID 0x03). */
 typedef struct FeaConfigFrame {
-	uint8_t		reportType;		/* 0x03 */
-	uint32_t 	dueTime;
-	uint16_t	mesInterval;
-	uint16_t	gyrScale;
-	uint16_t	accScale;
-	uint16_t	magScale;
-	uint8_t		gyrUnit;
-	uint8_t		accUnit;
-	uint8_t		magUnit;
+    uint8_t     reportType;     /* 0x03 */
+    uint32_t    dueTime;        /* Tempo limite de sessão (ms) */
+    uint16_t    mesInterval;    /* Intervalo entre medições de telemetria (ms) */
+    uint16_t    gyrScale;       /* Escala do giroscópio */
+    uint16_t    accScale;       /* Escala do acelerómetro */
+    uint16_t    magScale;       /* Escala do magnetómetro */
+    uint8_t     gyrUnit;        /* Unidade do giroscópio */
+    uint8_t     accUnit;        /* Unidade do acelerómetro */
+    uint8_t     magUnit;        /* Unidade do magnetómetro */
 } FeaConfigFrame;
 
-/* Exported Union ------------------------------------------------------------*/
-typedef union OutDataFrameSep {		/* EP1 Out Report Types */
-	uint8_t			rawStream[OutData_Size];	/* 4 + 4 X 3 X 3 */
-	OutDataFrame	frame;
+/* Exported Unions (Permitem acesso direto aos bytes crus ou à estrutura tipada) */
+
+typedef union OutDataFrameSep {
+    uint8_t         rawStream[OutData_Size];
+    OutDataFrame    frame;
 } OutDataFrameSep;
 
-typedef union FeaCheckFrameSep {	/* EP0 Feature Report Types */
-	uint8_t			rawStream[FeaCheck_Size];	/* 1 + 4 */
-	FeaCheckFrame	frame;
+typedef union FeaCheckFrameSep {
+    uint8_t         rawStream[FeaCheck_Size];
+    FeaCheckFrame   frame;
 } FeaCheckFrameSep;
+
 typedef union FeaRenewFrameSep {
-	uint8_t			rawStream[FeaRenew_Size];	/* 1 + 4 */
-	FeaRenewFrame	frame;
+    uint8_t         rawStream[FeaRenew_Size];
+    FeaRenewFrame   frame;
 } FeaRenewFrameSep;
+
 typedef union FeaConfigFrameSep {
-	uint8_t			rawStream[FeaConfig_Size];	/* 1 + 4 + 2 X 4 + 3 */
-	FeaConfigFrame	frame;
+    uint8_t         rawStream[FeaConfig_Size];
+    FeaConfigFrame  frame;
 } FeaConfigFrameSep;
 
-/* Exported constants --------------------------------------------------------*/
-typedef enum RepType {
-	Feature_None	= 0x00,
-	Feature_Check	= 0x01,		/* EP0 Feature Report Types */
-	Feature_Renew	= 0x02,
-	Feature_Config	= 0x03,
+/* Enumerations --------------------------------------------------------------*/
 
-	Out_None	= 0x10,			/* EP1 Out Report Types */
-	Out_Data	= 0x11,
+/** @brief Identificadores dos tipos de relatórios (Feature e Out). */
+typedef enum RepType {
+    Feature_None    = 0x00,
+    Feature_Check   = 0x01,     /* EP0 Feature Report: Verificação */
+    Feature_Renew   = 0x02,     /* EP0 Feature Report: Renovação */
+    Feature_Config  = 0x03,     /* EP0 Feature Report: Configuração */
+
+    Out_None        = 0x10,
+    Out_Data        = 0x11,     /* EP1 Relatório de Telemetria IMU */
 } RepType;
 
+/** @brief Estados de funcionamento da máquina de estados principal. */
 typedef enum State {
-	State_Idle		= 0x00,
-	State_Track		= 0x01,
+    State_Idle      = 0x00,     /* Estado de repouso / aguardar ativação */
+    State_Track     = 0x01,     /* Estado de leitura e transmissão ativa de sensores */
 } State;
 
-/* Exported functions ------------------------------------------------------- */
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* ODVTYPES_H_ */

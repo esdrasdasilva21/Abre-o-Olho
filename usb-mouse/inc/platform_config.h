@@ -1,81 +1,57 @@
 /**
-  ******************************************************************************
-  * @file    USB_Example/platform_config.h 
-  * @author  MCD Application Team
-  * @version V1.1.0
-  * @date    20-September-2012
-  * @brief   Evaluation board specific configuration file.
-  ******************************************************************************
-  * @attention
-  *
-  * <h2><center>&copy; COPYRIGHT 2012 STMicroelectronics</center></h2>
-  *
-  * Licensed under MCD-ST Liberty SW License Agreement V2, (the "License");
-  * You may not use this file except in compliance with the License.
-  * You may obtain a copy of the License at:
-  *
-  *        http://www.st.com/software_license_agreement_liberty_v2
-  *
-  * Unless required by applicable law or agreed to in writing, software 
-  * distributed under the License is distributed on an "AS IS" BASIS, 
-  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  * See the License for the specific language governing permissions and
-  * limitations under the License.
-  *
-  ******************************************************************************
-  */
+ ******************************************************************************
+ * @file    USB_Example/platform_config.h 
+ * @author  MCD Application Team (Comentado e Otimizado)
+ * @version V1.2.0
+ * @date    2026
+ * @brief   Configurações específicas da placa de avaliação para o stack USB.
+ ******************************************************************************
+ */
 
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __PLATFORM_CONFIG_H
-#define __PLATFORM_CONFIG_H
+#ifndef PLATFORM_CONFIG_H
+#define PLATFORM_CONFIG_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* Includes ------------------------------------------------------------------*/
+#include "stm32f30x.h"
 
-/* Exported types ------------------------------------------------------------*/
-/* Exported constants --------------------------------------------------------*/
-/* Uncomment the line corresponding to the STMicroelectronics evaluation board
-   used to run the example */
+/* Seleção da placa de desenvolvimento (Padrão: STM32F303C_EVAL / Discovery) */
 #if !defined (USE_STM32303C_EVAL)
  #define USE_STM32303C_EVAL
 #endif
 
 #if defined (USE_STM32303C_EVAL)
 
-#define USB_INT_DEFAULT// For Default Interrupt Mode                                             | RCC_AHBPeriph_GPIOH)
-//#define USB_INT_REMAP // For Remapping Interrupt Mode
-
-
-//#if defined (USB_INT_DEFAULT)
-//#warning "You are running Joystick Demo using Default Interruption Mode"
-//#endif
-
-#if defined (USB_INT_REMAP)
-#warning "You are running Joystick Demo using Remapping Interruption Mode"
-#endif
+/* Configuração do modo de interrupção USB */
+#define USB_INT_DEFAULT  /* Utiliza o modo de interrupção padrão para o USB */
 
 #if !defined (USB_INT_DEFAULT) && !defined (USB_INT_REMAP)
-  #error "Missing define Please Define Your Interrupt Mode By UnComment Line in platform_config.h File"
+  #error "Erro: Defina o modo de interrupção USB em platform_config.h (ex: USB_INT_DEFAULT)."
 #endif
 
-  #define USB_DISCONNECT                      GPIOE  
-  #define USB_DISCONNECT_PIN                  GPIO_Pin_14
-  #define RCC_AHBPeriph_GPIO_DISCONNECT       RCC_AHBPeriph_GPIOE
+/* Configuração do pino de Soft Disconnect do USB (Simula desligar/ligar o cabo) */
+#define USB_DISCONNECT                      GPIOE  
+#define USB_DISCONNECT_PIN                  GPIO_Pin_14
+#define RCC_AHBPeriph_GPIO_DISCONNECT       RCC_AHBPeriph_GPIOE
                                      
-#define RCC_AHBPeriph_ALLGPIO                 (RCC_AHBPeriph_GPIOA \
-                                              | RCC_AHBPeriph_GPIOB \
-                                              | RCC_AHBPeriph_GPIOC \
-                                              | RCC_AHBPeriph_GPIOD \
-                                              | RCC_AHBPeriph_GPIOE \
-                                              | RCC_AHBPeriph_GPIOF )
-
-
+/* Máscara global para ativação de todos os relógios dos portos GPIO no barramento AHB */
+#define RCC_AHBPeriph_ALLGPIO               (RCC_AHBPeriph_GPIOA \
+                                            | RCC_AHBPeriph_GPIOB \
+                                            | RCC_AHBPeriph_GPIOC \
+                                            | RCC_AHBPeriph_GPIOD \
+                                            | RCC_AHBPeriph_GPIOE \
+                                            | RCC_AHBPeriph_GPIOF)
 
 #endif /* USE_STM32303C_EVAL */
 
-/* Exported macro ------------------------------------------------------------*/
-/* Exported functions ------------------------------------------------------- */
+#ifdef __cplusplus
+}
+#endif
 
-#endif /* __PLATFORM_CONFIG_H */
+#endif /* PLATFORM_CONFIG_H */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
-
