@@ -1,45 +1,64 @@
 /**
-  ******************************************************************************
-  * @file    usb_mem.h
-  * @author  MCD Application Team
-  * @version V4.0.0
-  * @date    28-August-2012
-  * @brief   Utility prototypes functions for memory/PMA transfers
-  ******************************************************************************
-  * @attention
-  *
-  * <h2><center>&copy; COPYRIGHT 2012 STMicroelectronics</center></h2>
-  *
-  * Licensed under MCD-ST Liberty SW License Agreement V2, (the "License");
-  * You may not use this file except in compliance with the License.
-  * You may obtain a copy of the License at:
-  *
-  *        http://www.st.com/software_license_agreement_liberty_v2
-  *
-  * Unless required by applicable law or agreed to in writing, software 
-  * distributed under the License is distributed on an "AS IS" BASIS, 
-  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  * See the License for the specific language governing permissions and
-  * limitations under the License.
-  *
-  ******************************************************************************
-  */
+ ******************************************************************************
+ * @file    usb_mem.h
+ * @author  MCD Application Team (Melhorado e Comentado)
+ * @version V4.1.0
+ * @date    2026
+ * @brief   Protótipos e utilitários para transferência de dados entre a SRAM
+ *          da aplicação e a Packet Memory Area (PMA) dedicada do periférico USB.
+ ******************************************************************************
+ */
 
+#ifndef USB_MEM_H
+#define USB_MEM_H
 
-/* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __USB_MEM_H
-#define __USB_MEM_H
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* Includes ------------------------------------------------------------------*/
-/* Exported types ------------------------------------------------------------*/
+#include <stdint.h>
+
 /* Exported constants --------------------------------------------------------*/
+
+/** @brief Tamanho total da Packet Memory Area (PMA) no STM32F30x (512 bytes). */
+#define USB_PMA_TOTAL_SIZE      512U
+
+/** @brief Tamanho máximo de pacote suportado por endpoint Full-Speed HID (64 bytes). */
+#define USB_HID_MAX_PACKET_SIZE 64U
+
 /* Exported macro ------------------------------------------------------------*/
-/* Exported functions ------------------------------------------------------- */
-void UserToPMABufferCopy(uint8_t *pbUsrBuf, uint16_t wPMABufAddr, uint16_t wNBytes);
+
+/**
+ * @brief Verifica se um endereço de buffer na PMA está alinhado a 16 bits
+ *        (requisito obrigatório do controlador USB-FS do STM32F3).
+ */
+#define USB_IS_PMA_ADDR_ALIGNED(addr) (((addr) & 0x01U) == 0U)
+
+/* Exported functions --------------------------------------------------------*/
+
+/**
+ * @brief  Copia um bloco de bytes da SRAM do utilizador para a PMA do USB
+ *         (usado nas transmissões IN: Dispositivo -> Computador/TypeScript).
+ *
+ * @param  pbUsrBuf    Ponteiro constante para o buffer de origem na SRAM/Flash.
+ * @param  wPMABufAddr Endereço de destino dentro da PMA (deve ser par/alinhado).
+ * @param  wNBytes     Número de bytes a transferir.
+ */
+void UserToPMABufferCopy(const uint8_t *pbUsrBuf, uint16_t wPMABufAddr, uint16_t wNBytes);
+
+/**
+ * @brief  Copia um bloco de bytes da PMA do USB para a SRAM do utilizador
+ *         (usado nas receções OUT / Feature Reports: Computador -> Dispositivo).
+ *
+ * @param  pbUsrBuf    Ponteiro para o buffer de destino na SRAM.
+ * @param  wPMABufAddr Endereço de origem dentro da PMA (deve ser par/alinhado).
+ * @param  wNBytes     Número de bytes a transferir.
+ */
 void PMAToUserBufferCopy(uint8_t *pbUsrBuf, uint16_t wPMABufAddr, uint16_t wNBytes);
 
-/* External variables --------------------------------------------------------*/
+#ifdef __cplusplus
+}
+#endif
 
-#endif  /*__USB_MEM_H*/
-
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
+#endif /* USB_MEM_H */
