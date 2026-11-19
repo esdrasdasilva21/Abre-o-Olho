@@ -3,6 +3,7 @@ using System;
 using System.Drawing;
 using System.IO;
 using System.Text;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using Abre_o_Olho.App.Models;
 using Abre_o_Olho.App.Services;
@@ -14,6 +15,7 @@ namespace Abre_o_Olho.App.Forms
         private readonly HidService _hidService;
         private readonly HidReaderService _hidReader;
         private readonly HidDataParser _dataParser;
+        private readonly TelemetryApiClient _apiClient;
 
         private readonly StringBuilder _reportLog = new();
 
@@ -33,12 +35,14 @@ namespace Abre_o_Olho.App.Forms
         private TextBox _dataBox;
 
         private int _reportCount = 0;
+        private bool _apiWarningShown = false;
 
         public MainForm()
         {
             _hidService = new HidService();
             _hidReader = new HidReaderService(_hidService);
             _dataParser = new HidDataParser();
+            _apiClient = new TelemetryApiClient();
 
             _hidReader.ReportReceived += OnReportReceived;
             _hidReader.ReadingError += OnReadingError;
@@ -292,6 +296,9 @@ namespace Abre_o_Olho.App.Forms
                     logEntry +=
                         "\r\n--- DADOS INTERPRETADOS ---\r\n" +
                         sensorText + "\r\n";
+
+                    // Enviar telemetria para a API.
+                    _ = SendTelemetryToApiAsync(sensorData);
                 }
                 else
                 {
@@ -305,6 +312,55 @@ namespace Abre_o_Olho.App.Forms
                 _reportLog.Append(logEntry);
                 _dataBox.AppendText(logEntry);
             }));
+        }
+
+        private async Task SendTelemetryToApiAsync(SensorData data)
+        {
+            try
+            {
+                bool sent = await _apiClient.SendTelemetryAsync(data);
+
+                if (IsDisposed || !IsHandleCreated)
+                    return;
+
+                BeginInvoke(new Action(() =>
+                {
+                    if (sent)
+                    {
+                        _statusLabel.Text =
+                            "Estado: HID ligado | API conectada";
+
+                        _statusLabel.ForeColor = Color.LightGreen;
+
+                        _apiWarningShown = false;
+                    }
+                    else if (!_apiWarningShown)
+                    {
+                        _statusLabel.Text =
+                            "Estado: HID ligado | API indisponível";
+
+                        _statusLabel.ForeColor = Color.Orange;
+
+                        _dataBox.AppendText(
+                            "AVISO: Não foi possível enviar dados para a API.\r\n"
+                        );
+
+                        _apiWarningShown = true;
+                    }
+                }));
+            }
+            catch (Exception ex)
+            {
+                if (IsDisposed || !IsHandleCreated)
+                    return;
+
+                BeginInvoke(new Action(() =>
+                {
+                    _dataBox.AppendText(
+                        "ERRO API: " + ex.Message + "\r\n"
+                    );
+                }));
+            }
         }
 
         private string FormatSensorData(SensorData data)
@@ -404,6 +460,7 @@ namespace Abre_o_Olho.App.Forms
         {
             _hidReader.Dispose();
             _hidService.CloseConnection();
+            _apiClient.Dispose();
 
             base.OnFormClosing(e);
         }
