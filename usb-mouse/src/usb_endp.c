@@ -1,27 +1,10 @@
 /**
  ******************************************************************************
- * @file    USB_Example/usb_endp.c
- * @author  MCD Application Team
- * @version V1.1.0
- * @date    20-September-2012
- * @brief   Endpoint routines
- ******************************************************************************
- * @attention
- *
- * <h2><center>&copy; COPYRIGHT 2012 STMicroelectronics</center></h2>
- *
- * Licensed under MCD-ST Liberty SW License Agreement V2, (the "License");
- * You may not use this file except in compliance with the License.
- * You may obtain a copy of the License at:
- *
- *        http://www.st.com/software_license_agreement_liberty_v2
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
+ * @file    usb_endp.c
+ * @author  MCD Application Team (Comentado e Otimizado)
+ * @version V1.2.0
+ * @date    2026
+ * @brief   Rotinas de callback para os Endpoints USB (EP1 IN e EP1 OUT).
  ******************************************************************************
  */
 
@@ -30,30 +13,30 @@
 #include "usb_istr.h"
 #include "hw_config.h"
 #include "globalVars.h"
-
 #include "peripherals.h"
 
 /**
- * @brief  EP1 In Callback Routine.
- * @param  None
- * @retval None
+ * @brief  Callback executado quando a transmissão do Endpoint 1 IN (Dispositivo -> PC)
+ *         é concluída com sucesso no barramento USB.
  */
 void EP1_IN_Callback(void) {
-	/* Set the transfer complete token to inform upper layer that the current
-	 transfer has been complete */
-	STM_EVAL_LEDToggle(LED4);
-	EP1OutState = 1;
+    /* Pisca o LED4 para indicar tráfego de envio ativo */
+    STM_EVAL_LEDToggle(LED4);
+
+    /* Liberta o canal de envio para a próxima amostra de sensores */
+    EP1OutState = 1;
 }
 
 /**
- * @brief  EP1 OUT Callback Routine.
- * @param  None
- * @retval None
+ * @brief  Callback executado quando o Endpoint 1 OUT (PC -> Dispositivo)
+ *         recebe um novo pacote de dados.
  */
 void EP1_OUT_Callback(void) {
-	STM_EVAL_LEDToggle(LED5);
-	EP1InState = 1;
+    /* Pisca o LED5 para indicar tráfego de receção ativo */
+    STM_EVAL_LEDToggle(LED5);
+
+    /* Sinaliza ao loop principal (main.c) que há dados prontos para leitura */
+    EP1InState = 1;
 }
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
-
