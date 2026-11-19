@@ -8,35 +8,26 @@ export interface SensorTelemetry {
   receivedAt: string;
 }
 
+// Substitui pela porta real da tua API.
 const API_URL = 'http://localhost:5000';
 
 export async function getLatestTelemetry(): Promise<SensorTelemetry | null> {
-  try {
-    const response = await fetch(
-      `${API_URL}/api/telemetry/latest`
-    );
+  const response = await fetch(`${API_URL}/api/telemetry/latest`);
 
-    if (response.status === 404) {
-      return null;
-    }
-
-    if (!response.ok) {
-      throw new Error('Erro ao consultar a telemetria.');
-    }
-
-    const data: SensorTelemetry = await response.json();
-
-    return data;
-  } catch (error) {
-    console.error('Erro de comunicação com a API:', error);
-    throw error;
+  if (response.status === 404) {
+    return null;
   }
+
+  if (!response.ok) {
+    throw new Error('Não foi possível obter a telemetria.');
+  }
+
+  return await response.json() as SensorTelemetry;
 }
 
 export async function checkApiConnection(): Promise<boolean> {
   try {
     const response = await fetch(`${API_URL}/`);
-
     return response.ok;
   } catch {
     return false;
