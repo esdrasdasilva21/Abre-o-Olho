@@ -2,18 +2,22 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Abre_o_Olho.App.Services;
+using Abre_o_Olho.App.Models;
 
 namespace Abre_o_Olho.App.Services
 {
     public class HidReaderService : IDisposable
     {
         private readonly HidService _hidService;
+        private readonly HidDataParser _dataParser;
 
         private CancellationTokenSource? _cancellation;
         private Task? _readingTask;
 
-        public event Action<byte[]>? ReportReceived;
+        public event Action<HidReport>? ReportReceived;
+
+        public event Action<SensorData>? SensorDataReceived;
+
         public event Action<Exception>? ReadingError;
 
         public bool IsReading { get; private set; }
@@ -21,6 +25,7 @@ namespace Abre_o_Olho.App.Services
         public HidReaderService(HidService hidService)
         {
             _hidService = hidService;
+            _dataParser = new HidDataParser();
         }
 
         public void StartReading()
@@ -48,16 +53,35 @@ namespace Abre_o_Olho.App.Services
                 {
                     try
                     {
-                        byte[] report = _hidService.ReadReport();
+                        byte[] data = _hidService.ReadReport();
 
-                        if (report.Length > 0)
+                        if (data.Length == 0)
+                            continue;
+
+                        HidReport report = new HidReport
                         {
-                            ReportReceived?.Invoke(report);
+                            ReportId = data[0],
+                            RawData = data,
+                            ReceivedAt = DateTime.Now
+                        };
+
+                        // Disponibiliza o relatório bruto.
+                        ReportReceived?.Invoke(report);
+
+                        // Interpreta os dados dos sensores.
+                        if (_dataParser.TryParse(
+                            report,
+                            out SensorData? sensorData))
+                        {
+                            if (sensorData != null)
+                            {
+                                SensorDataReceived?.Invoke(sensorData);
+                            }
                         }
                     }
                     catch (TimeoutException)
                     {
-                        // Aguarda o próximo relatório.
+                        // Continua a aguardar novos relatórios.
                     }
                 }
             }
