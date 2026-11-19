@@ -1,8 +1,8 @@
 
-using Abre_o_Olho.App.Services;
 using System;
 using System.Drawing;
 using System.Windows.Forms;
+using Abre_o_Olho.App.Services;
 
 namespace Abre_o_Olho.App.Forms
 {
@@ -28,6 +28,8 @@ namespace Abre_o_Olho.App.Forms
             Size = new Size(650, 400);
             StartPosition = FormStartPosition.CenterScreen;
             BackColor = Color.FromArgb(24, 28, 36);
+            FormBorderStyle = FormBorderStyle.FixedSingle;
+            MaximizeBox = false;
 
             _titleLabel = new Label
             {
@@ -59,13 +61,17 @@ namespace Abre_o_Olho.App.Forms
             _scanButton = new Button
             {
                 Text = "PROCURAR DISPOSITIVO",
-                Size = new Size(220, 45),
+                Size = new Size(240, 45),
                 Location = new Point(38, 230),
                 BackColor = Color.FromArgb(40, 110, 180),
                 ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat
+                FlatStyle = FlatStyle.Flat,
+                Cursor = Cursors.Hand
             };
 
+            _scanButton.FlatAppearance.BorderSize = 0;
+
+            // Associar o evento de clique
             _scanButton.Click += ScanButton_Click;
 
             Controls.Add(_titleLabel);
@@ -76,17 +82,51 @@ namespace Abre_o_Olho.App.Forms
 
         private void ScanButton_Click(object? sender, EventArgs e)
         {
-            bool connected = _hidService.IsDeviceConnected();
+            try
+            {
+                // Teste inicial do evento
+                _statusLabel.Text = "Estado: A verificar...";
+                _statusLabel.ForeColor = Color.Yellow;
 
-            if (connected)
-            {
-                _statusLabel.Text = "Estado: Dispositivo encontrado!";
-                _statusLabel.ForeColor = Color.LightGreen;
+                // Procurar dispositivo USB HID
+                bool connected = _hidService.IsDeviceConnected();
+
+                if (connected)
+                {
+                    _statusLabel.Text = "Estado: Dispositivo encontrado!";
+                    _statusLabel.ForeColor = Color.LightGreen;
+
+                    MessageBox.Show(
+                        "O dispositivo Abre o Olho foi encontrado!",
+                        "USB HID",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information
+                    );
+                }
+                else
+                {
+                    _statusLabel.Text = "Estado: Dispositivo não encontrado.";
+                    _statusLabel.ForeColor = Color.OrangeRed;
+
+                    MessageBox.Show(
+                        "O dispositivo não foi encontrado.\nVerifica a ligação USB.",
+                        "USB HID",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning
+                    );
+                }
             }
-            else
+            catch (Exception ex)
             {
-                _statusLabel.Text = "Estado: Dispositivo não encontrado.";
+                _statusLabel.Text = "Estado: Erro na verificação.";
                 _statusLabel.ForeColor = Color.OrangeRed;
+
+                MessageBox.Show(
+                    ex.Message,
+                    "Erro na comunicação HID",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error
+                );
             }
         }
     }
